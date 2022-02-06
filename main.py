@@ -30,7 +30,9 @@ item02 = types.KeyboardButton("Назад")
 markup2 = types.ReplyKeyboardMarkup(resize_keyboard=True)
 markup2.add(item01)
 markup2.add(item02)
-last_message = []
+payments = {}
+comment = {}
+last_message = {}
 
 
 @bot.message_handler(commands=["start"])
@@ -45,55 +47,39 @@ def start(m):
     bot.send_message(m.chat.id, 'Я на связи. Напиши мне что-нибудь )', reply_markup=markup)
 
 
-payments = {}
-
-
 @bot.message_handler(content_types=["text"])
 def handle_text(message):
     if message.text.strip() == "Пополнить баланс":
+        last_message[message.chat.id] = "Пополнить баланс"
         bot.send_message(message.chat.id, 'Введите сумму пополнения баланса', reply_markup=markup1)
-        bot.register_next_step_handler(message, invoice)
     elif message.text.strip() == "Выиграть случайны приз":
         bot.send_message(message.chat.id, "Поздравляем! Вот ваш бит: " + randomik(), reply_markup=markup)
     elif message.text.strip() == "Баланс":
         bot.send_message(message.chat.id, "Ваш баланс: " + str(balance(message.chat.id)) + " руб", reply_markup=markup)
     elif message.text.strip() == "Назад":
         bot.send_message(message.chat.id, "Главное меню", reply_markup=markup)
-    elif message.text.strip() ==
-    else:
-        bot.send_message(message.chat.id, "Для навигации используйте кнопки, для обращения в тех поддрержку пишите "
-                                          "сюда: @tp", reply_markup=markup)
-
-
-def invoice(message):
-    if message.text.strip() == "Назад":
-        bot.send_message(message.chat.id, "Главное меню", reply_markup=markup)
-    else:
+    elif message.text.strip() == "Оплатил":
+        bot.send_message(message.chat.id, "Спасибо, за пополнение баланса,"
+                                          " как только деньги поступят мы пришлем вам сообщение ", reply_markup=markup)
+        threading.currentThread()
+        t2 = Thread(target=checker, args=(message, comment[message.chat.id]), daemon=True)
+        t2.start()
+        t2.join()
+    elif last_message[message.chat.id] == "Пополнить баланс":
         try:
             amount = str(int(message.text.strip()))
-            com = comment(amount, message.chat.id)
+            comment[message.chat.id] = comment_generate(amount, message.chat.id)
             link = "https://qiwi.com/payment/form/99?amountInteger=" + amount + \
                    "&amountFraction=0&currency=643&extra[%27comment%27]=" + \
-                   com + "&extra[%27account%27]=" + \
+                   comment[message.chat.id] + "&extra[%27account%27]=" + \
                    phone + "&blocked[0]=comment&blocked[1]=account&blocked[2]=sum "
             bot.send_message(message.chat.id, link, reply_markup=markup2)
-            bot.register_next_step_handler(message, check_pay, com)
         except ValueError:
             bot.send_message(message.chat.id, "Введена не корректная сумма попробуйте еще раз.")
             bot.send_message(message.chat.id, "Введите сумму пополнения баланса", reply_markup=markup1)
-            bot.register_next_step_handler(message, invoice)
-
-
-def check_pay(mes, com):
-    if mes.text.strip() == "Назад":
-        bot.send_message(mes.chat.id, "Главное меню", reply_markup=markup)
-    elif mes.text.strip() == "Оплатил":
-        bot.send_message(mes.chat.id, "Спасибо, за пополнение баланса,"
-                                      " как только деньги поступят мы пришлем вам сообщение ", reply_markup=markup)
-        threading.currentThread()
-        t2 = Thread(target=checker, args=(mes, com), daemon=True)
-        t2.start()
-        t2.join()
+    else:
+        bot.send_message(message.chat.id, "Для навигации используйте кнопки, для обращения в тех поддрержку пишите "
+                                          "сюда: @tp", reply_markup=markup)
 
 
 def randomik():
@@ -123,11 +109,6 @@ def checker(mes, com):
     while i < 11:
         h = s.get('https://edge.qiwi.com/payment-history/v2/persons/' + my_login + '/payments', params=parameters)
         for l in h.json()["data"]:
-            print("\n \n \n")
-            print(l['status'])
-            print(l['comment'] + " " + com)
-            print(l['sum']['amount'])
-            print(payments[com])
             if (str(l['status']) == "SUCCESS") & (str(l['comment']) == str(com)):
                 if str(l['sum']['amount']) == str(payments[com]):
                     bot.send_message(mes.chat.id, "Платеж получен , спасибо")
@@ -138,7 +119,7 @@ def checker(mes, com):
     bot.send_message(mes.chat.id, "Кажется мы не получили ваш платеж")
 
 
-def comment(am, ids):
+def comment_generate(am, ids):
     comment_txt = str(time.time()) + "_" + str(ids)
     payments[comment_txt] = am
     return comment_txt
