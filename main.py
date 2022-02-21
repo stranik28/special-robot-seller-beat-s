@@ -9,9 +9,9 @@ import requests
 from threading import Thread
 
 phone = "79180550501"
-token = '5221668103:AAGmoPyhe1c4B3l2A9MHgC_kl8IJcORhaW8'  # Telegram
+token = 'telegram_token'  # Telegram
 my_login = "79180550501"
-api_access_token = "b128c09e276f5e3ed879209ff26c8549"  # Qiwi token
+api_access_token = "qiwi_tocken"  # Qiwi token
 
 bot = telebot.TeleBot(token, parse_mode=None)
 
